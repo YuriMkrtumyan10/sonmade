@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  orders    Order[]
+  bookings  WorkshopBooking[]
+  contacts  ContactSubmission[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  category    String
+  images      String[] // Array of image URLs
+  inStock     Boolean  @default(true)
+  featured    Boolean  @default(false)
+  dimensions  String?
+  materials   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  orderItems OrderItem[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String?
+  customerEmail String
+  customerName  String
+  status        OrderStatus @default(PENDING)
+  total         Float
+  stripePaymentId String?
+  shippingAddress Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  user       User?       @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Workshop {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        WorkshopType
+  duration    Int      // Duration in hours
+  maxParticipants Int
+  price       Float
+  images      String[] // Array of image URLs
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  sessions WorkshopSession[]
+  bookings WorkshopBooking[]
+}
+
+model WorkshopSession {
+  id          String   @id @default(cuid())
+  workshopId  String
+  startTime   DateTime
+  endTime     DateTime
+  availableSpots Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  bookings WorkshopBooking[]
+}
+
+model WorkshopBooking {
+  id              String    @id @default(cuid())
+  userId          String?
+  workshopId      String
+  sessionId       String
+  customerEmail   String
+  customerName    String
+  participants    Int       @default(1)
+  totalPrice      Float
+  status          BookingStatus @default(PENDING)
+  stripePaymentId String?
+  specialRequests String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user     User?           @relation(fields: [userId], references: [id])
+  workshop Workshop       @relation(fields: [workshopId], references: [id])
+  session  WorkshopSession @relation(fields: [sessionId], references: [id])
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+}
+
+// Enums
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum WorkshopType {
+  POTTERY_WHEEL
+  HAND_BUILDING
+  GLAZING
+  SCULPTURE
+  BEGINNER_BASICS
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
